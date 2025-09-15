@@ -3,43 +3,39 @@ import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 
 const options = {
-    definition: {
-        components: {
-            securitySchemes: {
-                bearerAuth: {
-                    type: "http",
-                    scheme: "bearer",
-                    bearerFormat: "JWT",
-                },
-            },
-        },
-        openapi: "3.0.0",
-        info: {
-            title: "Demo API",
-            version: "1.0.0",
-            description: "API documentation cho project demo",
-        },
-        servers: [{
-                url: "http://localhost:5000", // khi deploy thì đổi thành link Render
-            },
-            {
-                url: "https://demo12-09.onrender.com", // 🟢 Khi deploy Render
-            },
-        ],
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Demo API",
+      version: "1.0.0",
+      description: "API documentation cho project demo",
     },
-    apis: ["./routes/*.js"], // đường dẫn tới file routes để swagger đọc
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
+    servers: [
+      {
+        url: "/", // 🟢 auto dùng domain hiện tại (Render hoặc local đều ok)
+      },
+    ],
+  },
+  apis: ["./routes/*.js"], // đường dẫn tới file routes để swagger đọc
 };
-
 
 const swaggerSpec = swaggerJSDoc(options);
 
 function swaggerDocs(app, port) {
-    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-    console.log(`📖 Swagger docs chạy tại http://localhost:${port}/api-docs`);
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+  // log ra đúng URL trong cả local và Render
+  const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
+  console.log(`📖 Swagger docs chạy tại ${baseUrl}/api-docs`);
 }
 
-export {
-    swaggerDocs,
-    swaggerSpec,
-    swaggerUi
-};
+export { swaggerDocs, swaggerSpec, swaggerUi };
