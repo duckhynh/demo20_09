@@ -1,5 +1,8 @@
 import express from "express";
-import { protect, authorize } from "../middlewares/authJwt.js";
+import {
+  protect,
+  authorize
+} from "../middlewares/authJwt.js";
 
 const router = express.Router();
 

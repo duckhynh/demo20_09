@@ -1,6 +1,11 @@
 import express from "express";
-import { User } from "../models/user.js";
-import { protect, adminOnly } from "../middlewares/authJwt.js";
+import {
+  User
+} from "../models/user.js";
+import {
+  protect,
+  adminOnly
+} from "../middlewares/authJwt.js";
 
 const router = express.Router();
 
@@ -8,7 +13,8 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Users
- *   description: API quản lý User (chỉ Admin)
+ *   description: API quản lý User (chỉ Admin)(adminUsername = "superadmin"  adminPassword = "123456") 
+ * 
  */
 
 /**
@@ -58,7 +64,9 @@ router.post("/users", protect, adminOnly, async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
@@ -79,7 +87,9 @@ router.get("/users", protect, adminOnly, async (req, res) => {
     const users = await User.find().select("-password -refreshToken -otp -otpExpire");
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
@@ -106,10 +116,14 @@ router.get("/users", protect, adminOnly, async (req, res) => {
 router.get("/users/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("_id username email role isVerified");
-    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+    if (!user) return res.status(404).json({
+      message: "User không tồn tại"
+    });
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
@@ -153,15 +167,24 @@ router.put("/users/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true, runValidators: true }
+      req.body, {
+        new: true,
+        runValidators: true
+      }
     ).select("_id username email role isVerified");
 
-    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+    if (!user) return res.status(404).json({
+      message: "User không tồn tại"
+    });
 
-    res.json({ message: "Cập nhật thành công", user });
+    res.json({
+      message: "Cập nhật thành công",
+      user
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
@@ -188,16 +211,25 @@ router.put("/users/:id", protect, adminOnly, async (req, res) => {
 router.delete("/users/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isVerified: false },
-      { new: true }
+      req.params.id, {
+        isVerified: false
+      }, {
+        new: true
+      }
     ).select("_id username email role isVerified");
 
-    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+    if (!user) return res.status(404).json({
+      message: "User không tồn tại"
+    });
 
-    res.json({ message: "User đã bị khóa (isVerified = false)", user });
+    res.json({
+      message: "User đã bị khóa (isVerified = false)",
+      user
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
