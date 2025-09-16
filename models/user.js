@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+  refreshToken: String,
 });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
