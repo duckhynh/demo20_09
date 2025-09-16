@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
     required: [true, "Password bắt buộc phải có!"],
     minlength: [5, "Password ít nhất 5 ký tự!"],
   },
+   role: {
+    type: String,
+    enum: ["user", "admin"], // Chỉ chấp nhận user hoặc admin
+    default: "user"
+  },
   otp: {
     type: String,
     default: null

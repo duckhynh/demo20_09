@@ -4,6 +4,8 @@ import { User } from "../models/user.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendMail } from "../config/mailer.js";
+import { protect, protectOptional, authorize } from "../middlewares/authJwt.js";
+
 
 dotenv.config();
 const router = express.Router();
@@ -13,8 +15,11 @@ const router = express.Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Đăng ký user mới (gửi OTP email)
+ *     summary: Đăng ký user mới (gửi OTP email). 
+ *              Nếu muốn tạo admin thì cần admin gọi API.
  *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []   # cần token admin nếu muốn tạo admin
  *     requestBody:
  *       required: true
  *       content:
@@ -32,15 +37,21 @@ const router = express.Router();
  *                 type: string
  *               password:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [user, admin]
+ *                 description: "Mặc định là user. Chỉ admin mới có thể tạo role=admin"
  *     responses:
  *       201:
  *         description: Tạo user thành công, OTP đã gửi email
  *       400:
  *         description: Username/Email đã tồn tại hoặc email không hợp lệ
  */
-router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+router.post("/register", protectOptional, async (req, res) => {
+  const { username, email, password, role } = req.body;
+
   try {
+    // check username, email
     const usernameExists = await User.findOne({ username });
     if (usernameExists) return res.status(400).json({ message: "Username đã tồn tại" });
 
@@ -50,12 +61,30 @@ router.post("/register", async (req, res) => {
     const emailRegex = /^\S+@\S+\.\S+$/;
     if (!emailRegex.test(email)) return res.status(400).json({ message: "Email không hợp lệ" });
 
+    // check role
+    let finalRole = "user";
+    if (role === "admin") {
+      if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ message: "Chỉ admin mới có quyền tạo tài khoản admin" });
+      }
+      finalRole = "admin";
+    }
+
+    // tạo OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
 
-  // Use model pre-save hook to hash password (avoid double-hashing)
-  const newUser = new User({ username, email, password, otp, otpExpire, isVerified: false });
-  const user = await newUser.save();
+    const newUser = new User({
+      username,
+      email,
+      password,
+      role: finalRole,
+      otp,
+      otpExpire,
+      isVerified: false,
+    });
+
+    const user = await newUser.save();
 
     try {
       await sendMail(
@@ -68,10 +97,12 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Không gửi được email OTP" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
 
     res.status(201).json({
-      user: { id: user._id, username: user.username, email: user.email },
+      user: { id: user._id, username: user.username, email: user.email, role: user.role },
       token,
       message: "Vui lòng kiểm tra email để lấy OTP và xác thực tài khoản.",
     });
@@ -336,7 +367,6 @@ router.post("/refresh-token", async (req, res) => {
     res.status(403).json({ message: "Refresh token không hợp lệ hoặc hết hạn" });
   }
 });
-
 
 
 export default router;

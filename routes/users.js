@@ -1,5 +1,6 @@
 import express from "express";
 import { User } from "../models/user.js";
+import { protect, adminOnly } from "../middlewares/authJwt.js";
 
 const router = express.Router();
 
@@ -7,15 +8,17 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Users
- *   description: API quản lý User
+ *   description: API quản lý User (chỉ Admin)
  */
 
 /**
  * @swagger
  * /users:
  *   post:
- *     summary: Tạo user mới
+ *     summary: Tạo user mới (Admin Only)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -33,21 +36,26 @@ const router = express.Router();
  *                 type: string
  *               password:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [user, admin]
  *     responses:
  *       200:
  *         description: User được tạo thành công
  */
-router.post("/users", async (req, res) => {
+router.post("/users", protect, adminOnly, async (req, res) => {
   try {
     const user = new User(req.body);
     await user.save();
-    res.json({ 
-      message: "Tạo user thành công", 
+    res.json({
+      message: "Tạo user thành công",
       user: {
         _id: user._id,
         username: user.username,
-        email: user.email
-      }
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -58,27 +66,17 @@ router.post("/users", async (req, res) => {
  * @swagger
  * /users:
  *   get:
- *     summary: Lấy toàn bộ danh sách User
+ *     summary: Lấy toàn bộ danh sách User (Admin Only)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách user
- *         content:
- *           application/json:
- *             example:
- *               - _id: "650d3d4f7b6d8f1e2432abcd"
- *                 username: "hungdev"
- *                 email: "hung@example.com"
- *                 isVerified: true
- *               - _id: "650d3d4f7b6d8f1e2432abce"
- *                 username: "duckhynh"
- *                 email: "duckhynh@example.com"
- *                 isVerified: false
  */
-router.get("/users", async (req, res) => {
+router.get("/users", protect, adminOnly, async (req, res) => {
   try {
-    const users = await User.find().select("-password -refreshToken -otp -otpExpire"); 
-    // bỏ password, refreshToken, otp cho an toàn
+    const users = await User.find().select("-password -refreshToken -otp -otpExpire");
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -89,8 +87,10 @@ router.get("/users", async (req, res) => {
  * @swagger
  * /users/{id}:
  *   get:
- *     summary: Lấy thông tin 1 user theo _id
+ *     summary: Lấy thông tin 1 user theo _id (Admin Only)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -99,13 +99,13 @@ router.get("/users", async (req, res) => {
  *           type: string
  *     responses:
  *       200:
- *         description: Trả về thông tin user
+ *         description: Thông tin user
  *       404:
  *         description: User không tồn tại
  */
-router.get("/users/:id", async (req, res) => {
+router.get("/users/:id", protect, adminOnly, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("_id username email isVerified");
+    const user = await User.findById(req.params.id).select("_id username email role isVerified");
     if (!user) return res.status(404).json({ message: "User không tồn tại" });
     res.json(user);
   } catch (err) {
@@ -117,8 +117,10 @@ router.get("/users/:id", async (req, res) => {
  * @swagger
  * /users/{id}:
  *   put:
- *     summary: Cập nhật thông tin user theo _id
+ *     summary: Cập nhật thông tin user theo _id (Admin Only)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -131,17 +133,32 @@ router.get("/users/:id", async (req, res) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [user, admin]
+ *               isVerified:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Cập nhật thành công
  *       404:
  *         description: User không tồn tại
  */
-router.put("/users/:id", async (req, res) => {
+router.put("/users/:id", protect, adminOnly, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .select("_id username email isVerified");
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    ).select("_id username email role isVerified");
+
     if (!user) return res.status(404).json({ message: "User không tồn tại" });
+
     res.json({ message: "Cập nhật thành công", user });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -152,8 +169,10 @@ router.put("/users/:id", async (req, res) => {
  * @swagger
  * /users/{id}:
  *   delete:
- *     summary: Xóa user theo _id
+ *     summary: Xoá user (isVerified = false) theo _id (Admin Only)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -162,15 +181,21 @@ router.put("/users/:id", async (req, res) => {
  *           type: string
  *     responses:
  *       200:
- *         description: Xóa thành công
+ *         description: Khóa user thành công (isVerified = false)
  *       404:
  *         description: User không tồn tại
  */
-router.delete("/users/:id", async (req, res) => {
+router.delete("/users/:id", protect, adminOnly, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id).select("_id username email");
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isVerified: false },
+      { new: true }
+    ).select("_id username email role isVerified");
+
     if (!user) return res.status(404).json({ message: "User không tồn tại" });
-    res.json({ message: "Xóa user thành công", user });
+
+    res.json({ message: "User đã bị khóa (isVerified = false)", user });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
