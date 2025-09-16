@@ -13,7 +13,7 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Users
- *   description: API quản lý User (chỉ Admin)(adminUsername = "superadmin"  adminPassword = "123456") 
+ *   description: API quản lý User (chỉ Admin)(email="admin@gmail.com"  adminPassword = "123456") 
  * 
  */
 
