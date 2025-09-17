@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.js";
 import protectedRoutes from "./routes/protected.js";
 import { swaggerDocs } from "./config/swagger.js";
 import userRoutes from "./routes/users.js"; 
+import profileRoutes from "./routes/profile.js";
 
 
 dotenv.config(); // load biến môi trường
@@ -29,6 +30,8 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/protected", protectedRoutes);
 app.use("/", userRoutes);
+app.use("/api/profile", profileRoutes);
+
 
 // Route test nhanh
 app.get("/", (req, res) => {

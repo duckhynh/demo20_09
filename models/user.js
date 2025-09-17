@@ -20,10 +20,14 @@ const userSchema = new mongoose.Schema({
     required: [true, "Password bắt buộc phải có!"],
     minlength: [5, "Password ít nhất 5 ký tự!"],
   },
-   role: {
+  role: {
     type: String,
     enum: ["user", "admin"], // Chỉ chấp nhận user hoặc admin
     default: "user"
+  },
+  avatar: {
+    type: String,
+    default: null
   },
   otp: {
     type: String,
@@ -33,10 +37,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-    isVerified: {
-      type: Boolean,
-      default: false
-    },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
   refreshToken: String,
 });
 
@@ -46,7 +50,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 
 // Hash password trước khi lưu
-userSchema.pre("save", async function(next) {
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
@@ -54,5 +58,3 @@ userSchema.pre("save", async function(next) {
 
 
 export const User = mongoose.model("User", userSchema);
-
-
